@@ -55,6 +55,7 @@ Automated steps still require running the tool manually ;-).
 0. _[A]_ Create the release branch and bump the versions. In detail:
 
     0. Create a new release branch from develop
+    0. For all changed crates, bump their version to a develop version.
     0. For the main crates and all of their dependencies in the workspace:
        - Include candidates by all of these positive indicators:
            * they have changed since their last release OR they haven't had a release
@@ -77,6 +78,10 @@ Automated steps still require running the tool manually ;-).
       --log-level=info \
       release \
         --steps=CreateReleaseBranch'
+
+    nice -n19 nix-shell --pure ../holochain/shell.nix --run 'env NIX_ENV_PREFIX=$HOME/src/holo/holochain hc-ra \
+      --workspace-path=$HOME/src/holo/holochain_release \
+      crate apply-dev-versions --commit'
 
     nice -n19 nix-shell --pure ../holochain/shell.nix --run 'env NIX_ENV_PREFIX=$HOME/src/holo/holochain hc-ra \
       --workspace-path=$HOME/src/holo/holochain_release \
@@ -163,6 +168,86 @@ Automated steps still require running the tool manually ;-).
     git push upstream main --tags
     ```
 
+0. _[M]_ Test that holochain-nixpkgs and holonix don't break.
+
+    0. Prepare environment variables
+
+    ```sh
+    export TAG=$(git tag --list | tac | grep -m1 holochain-)
+    export VERSION=${TAG/holochain-//}
+    export VERSION_COMPAT="v${VERSION/-/_/}"
+    export TMP_REPO1=$(mktemp -d)
+    export TMP_REPO2=$(mktemp -d)
+    export BRANCH=pr/add-${TAG}
+    ```
+
+    ***NOTE: best effort steps, don't work verbatim yet***
+
+    0. Push the most recent holochain tag.
+      ```sh
+      git push upstream ${TAG}
+      ```
+
+    0. Add an entry for this holochain tag to holochain-nixpkgs' _update\_config.toml_
+      ```sh
+      git clone git@github.com:holochain/holochain-nixkpgs.git ${TMP_REPO1}
+      pushd ${TMP_REPO1}
+
+      git checkout -b ${BRANCH}
+
+      # update all sources before adding the new holochain version
+      nix-shell --pure --run "hnixpkgs-update-all"
+
+      cat <<EOF >> packages/holochain/versions/update_config.toml
+
+      [${VERSION_COMPAT}]
+      git-src = "revision:${TAG}"
+      lair-version-req = "~0.0"
+      EOF
+
+      # TODO: add ${VERSION_COMPAT} to .github/workflows/build.yml to the list at `jobs.holochain-binaries.matrix.nixAttribute'
+
+      git commit -m "add ${TAG}"
+
+      nix-shell --pure --run "hnixpkgs-update-all"
+
+      # TODO: drop HEAD~1
+
+      git push origin ${BRANCH}
+      ```
+
+    0. Create a PR on holochain-nixpkgs and wait for CI to succeed.
+
+    0. Create a new branch in Holonix and point it to ${BRANCH}
+
+      ```
+      git clone git@github.com:holochain/holonix.git ${TMP_REPO2}
+      pushd ${TMP_REPO2}
+
+      git checkout -b ${BRANCH}
+
+      nix-shell -p niv --run "niv modify holochain-nixpkgs -b $(git branch --show-current)"
+      ./nix/update.sh
+      nix-shell --pure --run hn-test --argstr holochainVersionId ${VERSION_COMPAT}
+      ```
+
+0. _[M]_ TODO: push to Cachix
+
+0. _[T]_ Publish all the bumped crates to crates.io.
+
+    0. Run a variation of `cargo publish --dry-run` for all bumped crates.
+        Expected errors, such as missing dependencies of new crate versions, will be detected and tolerated.
+    0. On successful publish, the tool will invite the missing owners according to the *(FIXME: hardcoded)* given set of owners and the ones who are set on the registry.
+
+    ```sh
+    hc-ra \
+    --workspace-path=$PWD \
+    --log-level=debug \
+    release \
+        --dry-run \
+        --steps=PublishToCratesIo
+    ```
+
 0. _[M]_ Create a release from the new holochain tag on holochain/holochain.
 
 0. _[M]_ Merge the develop branch into the release branch if it has advanced in the meantime. Example:
@@ -179,6 +264,8 @@ Automated steps still require running the tool manually ;-).
 0. _[M]_ Merge the PR on holochain/holochain-nixpkgs.
 
 0. _[M]_ Adapt the PR on holochain/holonix to point to the merged commit and merge it as well.
+
+0. _[M]_ Create and merge a PR from the release branch to develop
 
 ## Development
 
