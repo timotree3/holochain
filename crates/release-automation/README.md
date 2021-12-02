@@ -108,9 +108,7 @@ Automated steps still require running the tool manually ;-).
     git push -u upstream $(git branch --show-current)
     ```
 
-0. _[M]_ Create a Pull-Request from the release branch to the main branch
-
-0. _[M]_ Ensure the CI tests pass
+0. _[M]_ Create a Pull-Request from the release branch to the main branch and ensure the CI tests pass
 
 0. _[M]_ Create PRs on holochain/holochain-nixpkgs aand holochain/holonix with the release candidate revision and ensure CI tests pass
 
@@ -250,7 +248,106 @@ Automated steps still require running the tool manually ;-).
 
 0. _[M]_ Create a release from the new holochain tag on holochain/holochain.
 
-0. _[M]_ Merge the develop branch into the release branch if it has advanced in the meantime. Example:
+    0. Prepare environment variables
+
+    ```sh
+    export TAG=$(git tag --list | tac | grep -m1 holochain-)
+    export VERSION=${TAG/holochain-/}
+    export VERSION_COMPAT="v${VERSION//./_}"
+    export TMP_REPO1=$(mktemp -d)
+    export TMP_REPO2=$(mktemp -d)
+    export BRANCH=pr/add-${TAG}
+    ```
+
+    ***NOTE: best effort steps, don't work verbatim yet***
+
+    0. Push the most recent holochain tag.
+      ```sh
+      git push upstream ${TAG}
+      ```
+
+    0. Add an entry for this holochain tag to holochain-nixpkgs' _update\_config.toml_
+      ```sh
+      git clone git@github.com:holochain/holochain-nixkpgs.git ${TMP_REPO1}
+      pushd ${TMP_REPO1}
+
+      git checkout -b ${BRANCH}
+
+      # update all sources before adding the new holochain version
+      nix-shell --pure --run "hnixpkgs-update-all"
+
+      cat <<EOF >> packages/holochain/versions/update_config.toml
+
+      [${VERSION_COMPAT}]
+      git-src = "revision:${TAG}"
+      lair-version-req = "~0.0"
+      EOF
+
+      # add the new tag to the CI config so it's built and cached by it
+      nix run nixpkgs.yq-go -c yq e -i \
+        ".jobs.holochain-binaries.strategy.matrix.nixAttribute = .jobs.holochain-binaries.strategy.matrix.nixAttribute + [\"${VERSION_COMPAT}\"]" \
+        .github/workflows/build.yml
+
+      git commit -m "add ${TAG}" .github/workflows/build.yml packages/holochain/versions/update_config.toml
+
+      nix-shell --pure --run "hnixpkgs-update-all"
+
+      # TODO: remove the commit instead of reverting it
+      # TODO: better yet, wait for https://github.com/berberman/nvfetcher/issues/37 which will allow seletive updating
+      git revert HEAD~2
+
+      git push origin ${BRANCH}
+      ```
+
+    0. Create a PR on holochain-nixpkgs and wait for CI to succeed.
+
+    0. Create a new branch in Holonix and point it to ${BRANCH}
+
+      ```
+      git clone git@github.com:holochain/holonix.git ${TMP_REPO2}
+      pushd ${TMP_REPO2}
+
+      git fetch upstream
+
+      git checkout -b ${BRANCH} origin/develop
+
+      nix-shell -p niv --run "niv modify holochain-nixpkgs -b $(git branch --show-current)"
+
+      ./nix/update.sh
+
+      nix-shell --run hn-test --argstr holochainVersionId ${VERSION_COMPAT}
+
+      git push origin ${BRANCH}
+      ```
+
+    0. Create a PR on holonix and wait for CI to succeed.
+
+0. _[T]_ Publish all the bumped crates to crates.io.
+
+    0. Run a variation of `cargo publish --dry-run` for all bumped crates.
+        Expected errors, such as missing dependencies of new crate versions, will be detected and tolerated.
+    0. On successful publish, the tool will invite the missing owners according to the *(FIXME: hardcoded)* given set of owners and the ones who are set on the registry.
+
+    ```sh
+    hc-ra \
+    --workspace-path=$PWD \
+    --log-level=debug \
+    release \
+        --steps=PublishToCratesIo
+    ```
+
+0. _[M]_ Merge the release branch into the main branch and push everything upstream.
+
+    In the holochain repo, do:
+
+    ```sh
+    git checkout main
+    git pull upstream
+    git merge --ff-only "${RELEASE_BRANCH}"
+    git push upstream main --tags
+    ```
+
+0. _[M]_ Merge the holochain develop branch into the release branch if it has advanced in the meantime. Example:
 
     ```sh
     git checkout "${RELEASE_BRANCH}"
@@ -259,13 +356,45 @@ Automated steps still require running the tool manually ;-).
     git push upstream "${RELEASE_BRANCH}"
     ```
 
-0. _[M]_ Create and merge a PR from the release branch to the develop branch.
+0. _[M]_ Create and merge a PR from the holochain release branch to the develop branch.
 
-0. _[M]_ Merge the PR on holochain/holochain-nixpkgs.
+0. _[M]_ Update and merge the PR on holochain/holochain-nixpkgs.
+
+    In the holochain-nixpkgs repo:
+
+    ```sh
+    nix-shell --pure --run "hnixpkgs-update-all"
+    git push
+    ```
+
+    Wait for CI tests to pass and merge it.
+
+0. _[M]_ Update and merge the PR on holochain/holonix.
+
+    In the holochain-nixpkgs repo:
+
+    ```sh
+    nix-shell -p niv --run "niv modify holochain-nixpkgs -b develop"
+    ./nix/update.sh
+    git push
+    ```
+
+    Wait for CI to pass and merge it.
 
 0. _[M]_ Adapt the PR on holochain/holonix to point to the merged commit and merge it as well.
 
 0. _[M]_ Create and merge a PR from the release branch to develop
+
+0. _[M]_ Promote a release from the new holochain tag on holochain/holochain.
+    According to the following template:
+
+    ```md
+    <INSERT HOLOCHAIN CHANGES>
+
+    ---
+
+    ***Please read [this release's top-level CHANGELOG](https://github.com/holochain/holochain/blob/main/CHANGELOG.md#<RELEASE_TIMESTAMP>) for details and changes in all crates in this repo.***
+    ```
 
 ## Development
 
