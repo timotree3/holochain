@@ -242,6 +242,7 @@ async fn run(
                         tracing::error!("Apps disabled.");
                     }
                 },
+                // TODO: this should have been DRY'd up
                 Some(TaskOutcome::StopAppsWithDna(dna_hash, error, context)) => {
                     tracing::error!("About to automatically stop apps with dna {}", dna_hash);
                     let app_ids = conductor.list_running_apps_for_required_dna_hash(dna_hash.as_ref()).await.map_err(TaskManagerError::internal)?;
