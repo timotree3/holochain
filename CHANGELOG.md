@@ -8,13 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 # 20211208.091009
 
-## [holochain-0.0.119](crates/holochain/CHANGELOG.md#0.0.119)
-
-## [holochain\_test\_wasm\_common-0.0.16](crates/holochain_test_wasm_common/CHANGELOG.md#0.0.16)
-
 ## [holochain\_cascade-0.0.19](crates/holochain_cascade/CHANGELOG.md#0.0.19)
 
 - Fixes database queries that were running on the runtime thread instead of the background thread. Makes the connections wait for a permit before taking a database connection from the pool. [\#1145](https://github.com/holochain/holochain/pull/1145)
+
+## [holochain\_sqlite-0.0.19](crates/holochain_sqlite/CHANGELOG.md#0.0.19)
+
+- Adds `basis_hash` index to `DhtOp` table. This makes get queries faster. [\#1143](https://github.com/holochain/holochain/pull/1143)
+
+## [kitsune\_p2p-0.0.17](crates/kitsune_p2p/CHANGELOG.md#0.0.17)
+
+- Agent info is now published as well as gossiped. [\#1115](https://github.com/holochain/holochain/pull/1115)
+- BREAKING: Network wire message has changed format so will not be compatible with older versions. [1143](https://github.com/holochain/holochain/pull/1143).
+- Fixes to gossip that allows batching of large amounts of data. [1143](https://github.com/holochain/holochain/pull/1143).
+
+<details>
+<summary>Other crates without detailed changes.</summary>
+
+## [holochain-0.0.119](crates/holochain/CHANGELOG.md#0.0.119)
+
+## [holochain\_test\_wasm\_common-0.0.16](crates/holochain_test_wasm_common/CHANGELOG.md#0.0.16)
 
 ## [holochain\_cli-0.0.20](crates/holochain_cli/CHANGELOG.md#0.0.20)
 
@@ -36,16 +49,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [holochain\_keystore-0.0.19](crates/holochain_keystore/CHANGELOG.md#0.0.19)
 
-## [holochain\_sqlite-0.0.19](crates/holochain_sqlite/CHANGELOG.md#0.0.19)
-
-- Adds `basis_hash` index to `DhtOp` table. This makes get queries faster. [\#1143](https://github.com/holochain/holochain/pull/1143)
-
-## [kitsune\_p2p-0.0.17](crates/kitsune_p2p/CHANGELOG.md#0.0.17)
-
-- Agent info is now published as well as gossiped. [\#1115](https://github.com/holochain/holochain/pull/1115)
-- BREAKING: Network wire message has changed format so will not be compatible with older versions. [1143](https://github.com/holochain/holochain/pull/1143).
-- Fixes to gossip that allows batching of large amounts of data. [1143](https://github.com/holochain/holochain/pull/1143).
-
 ## [kitsune\_p2p\_proxy-0.0.15](crates/kitsune_p2p_proxy/CHANGELOG.md#0.0.15)
 
 ## [kitsune\_p2p\_transport\_quic-0.0.15](crates/kitsune_p2p_transport_quic/CHANGELOG.md#0.0.15)
@@ -61,6 +64,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [holo\_hash-0.0.13](crates/holo_hash/CHANGELOG.md#0.0.13)
 
 ## [fixt-0.0.8](crates/fixt/CHANGELOG.md#0.0.8)
+
+</details>
 
 # 20211201.111024
 
