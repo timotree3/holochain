@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fixes to gossip that allows batching of large amounts of data. [1143](https://github.com/holochain/holochain/pull/1143).
 
 <details>
-<summary style="font-size:32px;">Other crates without detailed changes </summary>
+<summary style="font-size:32px;"><b><u>Other crates without detailed changes</u></b></summary>
 
 ## [holochain-0.0.119](crates/holochain/CHANGELOG.md#0.0.119)
 
